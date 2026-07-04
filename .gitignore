@@ -1,0 +1,12 @@
+# ฐานข้อมูล local
+*.db
+*.sqlite
+
+# Streamlit secrets (ห้าม commit!)
+.streamlit/secrets.toml
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.env
