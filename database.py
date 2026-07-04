@@ -14,7 +14,8 @@ from pathlib import Path
 def _detect_postgres() -> bool:
     try:
         import streamlit as st
-        return bool(st.secrets.get("database", ).get("url", ""))
+        db = st.secrets.get("database", {})
+        return bool(db.get("host") or db.get("url"))
     except Exception:
         return False
 
@@ -31,10 +32,15 @@ if _PG:
     import streamlit as st
 
     def get_connection():
+        db = st.secrets["database"]
         return psycopg2.connect(
-            st.secrets["database"]["url"],
-            cursor_factory=psycopg2.extras.RealDictCursor,
-            sslmode="require",
+            host     = db["host"],
+            port     = int(db.get("port", 5432)),
+            dbname   = db.get("dbname", "postgres"),
+            user     = db["user"],
+            password = db["password"],
+            sslmode  = "require",
+            cursor_factory = psycopg2.extras.RealDictCursor,
         )
 
     PH        = "%s"                            # parameter placeholder
