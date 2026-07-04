@@ -32,16 +32,32 @@ if _PG:
     import streamlit as st
 
     def get_connection():
+        from urllib.parse import urlparse, unquote
         db = st.secrets["database"]
-        return psycopg2.connect(
-            host     = db["host"],
-            port     = int(db.get("port", 5432)),
-            dbname   = db.get("dbname", "postgres"),
-            user     = db["user"],
-            password = db["password"],
-            sslmode  = "require",
-            cursor_factory = psycopg2.extras.RealDictCursor,
-        )
+
+        if "host" in db:
+            # format ใหม่: separate fields (แนะนำ)
+            return psycopg2.connect(
+                host     = db["host"],
+                port     = int(db.get("port", 5432)),
+                dbname   = db.get("dbname", "postgres"),
+                user     = db["user"],
+                password = db["password"],
+                sslmode  = "require",
+                cursor_factory = psycopg2.extras.RealDictCursor,
+            )
+        else:
+            # format เดิม: url string — แยก components เพื่อรองรับ @ ใน password
+            parsed = urlparse(db["url"])
+            return psycopg2.connect(
+                host     = parsed.hostname,
+                port     = parsed.port or 5432,
+                dbname   = parsed.path.lstrip("/"),
+                user     = parsed.username,
+                password = unquote(parsed.password or ""),
+                sslmode  = "require",
+                cursor_factory = psycopg2.extras.RealDictCursor,
+            )
 
     PH        = "%s"                            # parameter placeholder
     AUTO_ID   = "SERIAL PRIMARY KEY"            # auto-increment id column
