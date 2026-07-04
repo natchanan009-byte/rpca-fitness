@@ -106,11 +106,11 @@ def render_sidebar():
 # ---------------------------------------------------------------------------
 
 def _user_platoon() -> str | None:
-    """คืนหมู่ของผู้ใช้ — rpca00 คืน None (ดูได้ทุกหมู่)"""
+    """คืนหมวดของผู้ใช้ — rpca00 คืน None (ดูได้ทุกหมวด)"""
     username = st.session_state.username
     if auth.is_commander(username):
         return None
-    return username.replace("rpca", "")   # เช่น "rpca41" → "41"
+    return str(int(username.replace("rpca", "")))  # "rpca01" → "1"
 
 
 def _score_badge(score: int | None) -> str:
@@ -128,11 +128,11 @@ def page_dashboard():
     st.title("📊 สรุปผลสมรรถภาพร่างกาย นรต.")
     platoon = _user_platoon()
 
-    # กรองหมู่ (เฉพาะ rpca00 เลือกได้)
+    # กรองหมวด (เฉพาะ rpca00 เลือกได้)
     if auth.is_commander(st.session_state.username):
-        options = ["ทุกหมู่", "41", "42", "43", "44", "45", "46", "47", "48", "49"]
-        sel = st.selectbox("แสดงผลหมู่", options, index=0)
-        platoon = None if sel == "ทุกหมู่" else sel
+        options = ["ทุกหมวด", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+        sel = st.selectbox("แสดงผลหมวด", options, index=0)
+        platoon = None if sel == "ทุกหมวด" else sel
 
     rows = db.get_all_latest_results(platoon)
     if not rows:
@@ -142,7 +142,7 @@ def page_dashboard():
     df = pd.DataFrame(rows)
     df.rename(columns={
         "student_id": "รหัส", "full_name": "ชื่อ-นามสกุล",
-        "platoon": "หมู่", "test_date": "วันทดสอบ",
+        "platoon": "หมวด", "test_date": "วันทดสอบ",
         "total_score": "คะแนนรวม", "percentage": "%",
         "is_passed": "ผล",
         "s1": "ดึงข้อ", "s2": "พุ่งเท้า", "s3": "ดันพื้น",
@@ -152,7 +152,7 @@ def page_dashboard():
     df["ผล"] = df["ผล"].map(lambda v: "✅ ผ่าน" if v == 1 else ("❌ ไม่ผ่าน" if v == 0 else "—"))
     df["%"] = df["%"].map(lambda v: f"{v:.2f}" if v is not None else "—")
 
-    cols_show = ["รหัส", "ชื่อ-นามสกุล", "หมู่", "วันทดสอบ",
+    cols_show = ["รหัส", "ชื่อ-นามสกุล", "หมวด", "วันทดสอบ",
                  "ดึงข้อ", "พุ่งเท้า", "ดันพื้น", "ลุกนั่ง",
                  "เชือก", "วิ่ง", "ว่ายน้ำ",
                  "คะแนนรวม", "%", "ผล"]
@@ -182,9 +182,9 @@ def page_manage_students():
     # ── รายชื่อ ───────────────────────────────────────────────
     with tab_list:
         if auth.is_commander(username):
-            options = ["ทุกหมู่"] + [str(i) for i in range(41, 50)]
-            sel = st.selectbox("กรองตามหมู่", options, key="list_platoon_sel")
-            show_platoon = None if sel == "ทุกหมู่" else sel
+            options = ["ทุกหมวด"] + [str(i) for i in range(1, 10)]
+            sel = st.selectbox("กรองตามหมวด", options, key="list_platoon_sel")
+            show_platoon = None if sel == "ทุกหมวด" else sel
         else:
             show_platoon = platoon
 
@@ -193,7 +193,7 @@ def page_manage_students():
             df = pd.DataFrame(students)[
                 ["student_id", "full_name", "platoon", "weight_kg", "height_cm", "updated_by", "created_at"]
             ]
-            df.columns = ["รหัส", "ชื่อ-นามสกุล", "หมู่", "น้ำหนัก(กก.)", "ส่วนสูง(ซม.)", "บันทึกโดย", "วันที่สร้าง"]
+            df.columns = ["รหัส", "ชื่อ-นามสกุล", "หมวด", "น้ำหนัก(กก.)", "ส่วนสูง(ซม.)", "บันทึกโดย", "วันที่สร้าง"]
             st.dataframe(df, use_container_width=True, hide_index=True)
             st.caption(f"จำนวนนักเรียนทั้งหมด: {len(students)} คน")
         else:
@@ -208,10 +208,10 @@ def page_manage_students():
                 new_sid  = st.text_input("รหัสนักเรียน *", placeholder="เช่น 6701")
                 new_name = st.text_input("ชื่อ-นามสกุล *", placeholder="นรต. ...")
                 if auth.is_commander(username):
-                    new_platoon = st.selectbox("หมู่ *", [str(i) for i in range(41, 50)], key="add_platoon")
+                    new_platoon = st.selectbox("หมวด *", [str(i) for i in range(1, 10)], key="add_platoon")
                 else:
                     new_platoon = platoon
-                    st.text_input("หมู่", value=platoon, disabled=True)
+                    st.text_input("หมวด", value=platoon, disabled=True)
             with c2:
                 new_weight = st.number_input("น้ำหนัก (กก.)", 30.0, 150.0, 65.0, 0.1)
                 new_height = st.number_input("ส่วนสูง (ซม.)", 100.0, 220.0, 170.0, 0.1)
@@ -233,7 +233,7 @@ def page_manage_students():
     with tab_edit:
         students_edit = db.get_students(platoon)
         if not students_edit:
-            st.info("ยังไม่มีข้อมูลนักเรียนในหมู่นี้")
+            st.info("ยังไม่มีข้อมูลนักเรียนในหมวดนี้")
             return
 
         options_edit = {f"{s['student_id']} — {s['full_name']}": s["student_id"] for s in students_edit}
@@ -248,13 +248,13 @@ def page_manage_students():
                     e_name   = st.text_input("ชื่อ-นามสกุล", stu["full_name"])
                     if auth.is_commander(username):
                         e_platoon = st.selectbox(
-                            "หมู่", [str(i) for i in range(41, 50)],
-                            index=[str(i) for i in range(41, 50)].index(stu["platoon"]),
+                            "หมวด", [str(i) for i in range(1, 10)],
+                            index=[str(i) for i in range(1, 10)].index(stu["platoon"]),
                             key="edit_platoon",
                         )
                     else:
                         e_platoon = stu["platoon"]
-                        st.text_input("หมู่", value=stu["platoon"], disabled=True)
+                        st.text_input("หมวด", value=stu["platoon"], disabled=True)
                 with c2:
                     e_weight = st.number_input("น้ำหนัก (กก.)", 30.0, 150.0,
                                                float(stu["weight_kg"] or 65), 0.1)
